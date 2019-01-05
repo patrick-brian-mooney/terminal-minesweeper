@@ -20,14 +20,23 @@ import random
 # constants. #FIXME: make these command-line overrideable.
 terminal_width = 80
 terminal_height = 24
-number_of_mines = 10
+number_of_mines = 1
 
+# Thanks to FIGlet for these next two.
 boom_text = """
     ____  ____  ____  __  _____
    / __ )/ __ \/ __ \/  |/  / /
   / __  / / / / / / / /|_/ / / 
  / /_/ / /_/ / /_/ / /  / /_/  
 /_____/\____/\____/_/  /_(_)   
+"""
+
+win_text = """
+__  __                        _       __
+\ \/ /___  __  __   _      __(_)___  / /
+ \  / __ \/ / / /  | | /| / / / __ \/ / 
+ / / /_/ / /_/ /   | |/ |/ / / / / /_/  
+/_/\____/\__,_/    |__/|__/_/_/ /_(_)   
 """
 
 board_width = None      # these will be calculated automatically based on terminal width and height.
@@ -74,7 +83,8 @@ def display_help():
     print("\nAt each iteration, type any of the following commands:\n")
     print("Q:\tReveal the map and quit the game.")
     print("H:\tDisplay this help text again.")
-    print("R x,y:\tReveal the contents of the square square at (zero-based) x, y.\n")
+    print("R x,y:\tReveal the contents of the square square at (zero-based) x, y.")
+    print("M x,y:\tMark the square at (zero-based) x, y as containing a mine.\n")
 
 
 def menu(prompt: str, options: list) -> str:
@@ -155,7 +165,7 @@ def do_reveal(entry: str):
     try:
         x, y = tuple(entry.split(','))      # unpack, assuming that the user made a valid entry.
         x, y = int(x), int(y)
-    except ValueError:
+    except ValueError:                      # Of course, not all entries are actually parseable.
         print("Error! REVEAL commands must be have two integers separated by a comma.")
         return
     if board[y][x]:
@@ -167,10 +177,56 @@ def do_reveal(entry: str):
     display_board[y][x] = str(count_neighboring_mines(x, y))
 
 
+def check_for_win():
+    """Check to see if the user has won. If so, print a winning message and
+    set the global variable DONE to True to force ending after we return.
+    """
+    global done
+    global board, display_board
+
+    correctly_marked = 0
+    for y_pos, row in enumerate(display_board):
+        for x_pos, column in enumerate(row):
+            if column == "*":
+                if not board[y_pos][x_pos]:
+                    return                          # One incorrect mark means we're not done.
+                else:
+                    correctly_marked += 1
+    # If we got this far, we don't have any incorrectly marked. Do we have the correct number of marks?
+    if correctly_marked == number_of_mines:
+        print(win_text)
+        done = True
+
+
+def do_mark(entry: str):
+    """Parse the user input for a string of the form M x,y as containing a mine.
+    ENTRY is the user's full input, which is broken down and processed. If x,y is
+    already marked as containing a mine, unmark it.
+
+    If the user has correctly marked all mines, s/he wins!
+    """
+    global done
+    global board, display_board
+    entry = ''.join([i for i in entry if i.isdigit() or i == ','])  # Simplistic, but good enough for now.
+    try:
+        x, y = tuple(entry.split(','))      # unpack, assuming that the user made a valid entry.
+        x, y = int(x), int(y)
+    except ValueError:                      # Of course, not all entries are actually parseable.
+        print("Error! MARK commands must be have two integers separated by a comma.")
+        return
+    if display_board[y][x] == '*':
+        display_board[y][x] = ' '
+    elif display_board[y][x] == ' ':
+        display_board[y][x] = '*'
+        check_for_win()
+    else:
+        print("Error: %s, %s is already known not to contain a mine." % (x, y))
+
+
 def process_input():
     """Get and process user input."""
     global done
-    ans = menu("What now?", ['Q', 'H', 'R x,y'])
+    ans = menu("What now?", ['Q', 'H', 'R x,y', 'M x,y'])
     if ans.lower()[0] == 'q':
         done = True
         reveal_mines()
@@ -178,6 +234,8 @@ def process_input():
         display_help()
     elif ans.lower()[0] == 'r':
         do_reveal(ans)
+    elif ans.lower()[0] == 'm':
+        do_mark(ans)
     else:
         raise RuntimeError("menu() is not validating input correctly!")
 
