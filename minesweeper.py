@@ -20,7 +20,7 @@ import random
 # constants. #FIXME: make these command-line overrideable.
 terminal_width = 80
 terminal_height = 24
-number_of_mines = 1
+number_of_mines = 7
 
 # Thanks to FIGlet for these next two.
 boom_text = """
@@ -85,6 +85,8 @@ def display_help():
     print("H:\tDisplay this help text again.")
     print("R x,y:\tReveal the contents of the square square at (zero-based) x, y.")
     print("M x,y:\tMark the square at (zero-based) x, y as containing a mine.\n")
+    print("\n\nPress ENTER to continue")
+    _ = input()
 
 
 def menu(prompt: str, options: list) -> str:
@@ -96,10 +98,10 @@ def menu(prompt: str, options: list) -> str:
         assert type(i) == type('y'), "ERROR: the OPTIONS list may only contain strings!"
         assert len(i) > 0, "ERROR: the OPTIONS list may not contain empty strings!"
     answered = False
+    prompt = prompt.strip() + "  ["
+    prompt += ' / '.join([i.upper() if len(i) < 2 else (i[0].upper() + i[1:]) for i in options])
+    prompt += "] "
     while not answered:
-        prompt = prompt.strip() + "  ["
-        prompt += ' / '.join([i.upper() if len(i) < 2 else (i[0].upper() + i[1:]) for i in options])
-        prompt += "] "
         ans = input(prompt)
         answered = (len(ans) >= 1) and (ans[0].lower() in [i.lower()[0] for i in options])
     return ans
@@ -107,8 +109,8 @@ def menu(prompt: str, options: list) -> str:
 
 def intro():
     """Quick overview, then offer UI interaction instructions."""
-    print("Minesweeper 0.1 by Patrick Mooney.\nCopyright 2019, licensed under GPL v3+.")
-    ans = menu("\nInstructions?", ['y', 'n'])
+    print("\n\nMinesweeper 0.2 by Patrick Mooney.\nCopyright 2019, licensed under GPL v3+.\n")
+    ans = menu("Instructions?", ['y', 'n'])
     if ans[0] == "y":
         display_help()
 
@@ -151,6 +153,23 @@ def count_neighboring_mines(x, y: int) -> int:
     return count
 
 
+def parse_coordinates(entry) -> tuple:
+    """"""
+    entry = ''.join([i for i in entry if i.isdigit() or i == ','])  # Simplistic, but good enough for now.
+    try:
+        x, y = tuple(entry.split(','))      # unpack, assuming that the user made a valid entry.
+        x, y = int(x), int(y)
+    except ValueError:                      # Of course, not all entries are actually parseable.
+        print("Error! Coordinates must have two integers separated by a comma.")
+        return None, None
+    if (x < 0) or (x > (board_width - 1)):
+        print("Error! The highest-numbered column is %s." % board_width - 1)
+        return None, None
+    if (y < 0) or (y > (board_height -1)):
+        print("Error! The highest-numbered row is %s." % board_height - 1)
+        return None, None
+    return x, y
+
 def do_reveal(entry: str):
     """Parse (simply) the user's input (ENTRY) and deal with the results.
     The format of a REVEAL command is R x,y, where x,y is the zero-based location
@@ -161,12 +180,8 @@ def do_reveal(entry: str):
     """
     global done
     global board, display_board
-    entry = ''.join([i for i in entry if i.isdigit() or i == ','])  # Simplistic, but good enough for now.
-    try:
-        x, y = tuple(entry.split(','))      # unpack, assuming that the user made a valid entry.
-        x, y = int(x), int(y)
-    except ValueError:                      # Of course, not all entries are actually parseable.
-        print("Error! REVEAL commands must be have two integers separated by a comma.")
+    x, y = parse_coordinates(entry)
+    if x == None or y == None:          # We've already printed an error message.
         return
     if board[y][x]:
         print(boom_text)
@@ -207,13 +222,7 @@ def do_mark(entry: str):
     """
     global done
     global board, display_board
-    entry = ''.join([i for i in entry if i.isdigit() or i == ','])  # Simplistic, but good enough for now.
-    try:
-        x, y = tuple(entry.split(','))      # unpack, assuming that the user made a valid entry.
-        x, y = int(x), int(y)
-    except ValueError:                      # Of course, not all entries are actually parseable.
-        print("Error! MARK commands must be have two integers separated by a comma.")
-        return
+    x, y = parse_coordinates(entry)
     if display_board[y][x] == '*':
         display_board[y][x] = ' '
     elif display_board[y][x] == ' ':
