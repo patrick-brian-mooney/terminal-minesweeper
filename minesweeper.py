@@ -133,8 +133,9 @@ def count_neighboring_mines(x, y: int) -> int:
     for x_pos in range(x-1, x+2):
         for y_pos in range(y-1, y+2):
             try:
-                if board[y_pos][x_pos]:
-                    count += 1
+                if x_pos > -1 and y_pos > -1:
+                    if board[y_pos][x_pos]:
+                        count += 1
             except IndexError:
                 pass
     return count
